@@ -1,18 +1,54 @@
 {
-  "generated_at": null,
+  "generated_at": "2026-08-29T02:46:24Z",
   "source_errors": {
-    "cen": "placeholder inicial: aún no corrió el workflow",
-    "dga": "placeholder inicial: aún no corrió el workflow"
+    "cen": null,
+    "dga": null
   },
   "lakes": {
-    "Rapel": {"cota": null, "wind_speed": null, "wind_dir": null},
-    "Vichuquén": {"cota": null, "wind_speed": null, "wind_dir": null},
-    "Colbún": {"cota": null, "wind_speed": null, "wind_dir": null},
-    "Villarrica": {"cota": null, "wind_speed": null, "wind_dir": null},
-    "Caburgua": {"cota": null, "wind_speed": null, "wind_dir": null},
-    "Calafquén": {"cota": null, "wind_speed": null, "wind_dir": null},
-    "Panguipulli": {"cota": null, "wind_speed": null, "wind_dir": null},
-    "Riñihue": {"cota": null, "wind_speed": null, "wind_dir": null},
-    "Ranco": {"cota": null, "wind_speed": null, "wind_dir": null}
+    "Rapel": {
+      "cota": 103.7,
+      "wind_speed": 4.3,
+      "wind_dir": 95
+    },
+    "Vichuquén": {
+      "cota": null,
+      "wind_speed": 9.1,
+      "wind_dir": 27
+    },
+    "Colbún": {
+      "cota": 436.0,
+      "wind_speed": 15.5,
+      "wind_dir": 63
+    },
+    "Villarrica": {
+      "cota": 0.0,
+      "wind_speed": 17.3,
+      "wind_dir": 349
+    },
+    "Caburgua": {
+      "cota": 0.0,
+      "wind_speed": 1.7,
+      "wind_dir": 77
+    },
+    "Calafquén": {
+      "cota": 0.0,
+      "wind_speed": 16.0,
+      "wind_dir": 351
+    },
+    "Panguipulli": {
+      "cota": null,
+      "wind_speed": 18.4,
+      "wind_dir": 355
+    },
+    "Riñihue": {
+      "cota": 0.0,
+      "wind_speed": 14.3,
+      "wind_dir": 6
+    },
+    "Ranco": {
+      "cota": 0.0,
+      "wind_speed": 12.8,
+      "wind_dir": 22
+    }
   }
 }
