@@ -1,0 +1,18 @@
+{
+  "generated_at": null,
+  "source_errors": {
+    "cen": "placeholder inicial: aún no corrió el workflow",
+    "dga": "placeholder inicial: aún no corrió el workflow"
+  },
+  "lakes": {
+    "Rapel": {"cota": null, "wind_speed": null, "wind_dir": null},
+    "Vichuquén": {"cota": null, "wind_speed": null, "wind_dir": null},
+    "Colbún": {"cota": null, "wind_speed": null, "wind_dir": null},
+    "Villarrica": {"cota": null, "wind_speed": null, "wind_dir": null},
+    "Caburgua": {"cota": null, "wind_speed": null, "wind_dir": null},
+    "Calafquén": {"cota": null, "wind_speed": null, "wind_dir": null},
+    "Panguipulli": {"cota": null, "wind_speed": null, "wind_dir": null},
+    "Riñihue": {"cota": null, "wind_speed": null, "wind_dir": null},
+    "Ranco": {"cota": null, "wind_speed": null, "wind_dir": null}
+  }
+}

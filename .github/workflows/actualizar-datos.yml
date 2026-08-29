@@ -1,0 +1,44 @@
+name: Actualizar datos de lagos
+
+on:
+  schedule:
+    # Cada 30 minutos. Para 2-3 personas es más que suficiente frecuencia
+    # (una cota de embalse o un viento no cambian de forma relevante en minutos).
+    # GitHub no garantiza el minuto exacto bajo carga alta de su infraestructura;
+    # puede haber algunos minutos de atraso, es normal.
+    #
+    # Presupuesto de minutos gratis en repos privados: si te preocupa el cupo
+    # mensual de Actions, cambia a "0,30 * * * *" -> "0 * * * *" (cada 1 hora)
+    # para la mitad de corridas/mes. En un repo público, Actions es gratis sin
+    # límite práctico para una tarea tan liviana como esta.
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}   # permite correrlo manualmente desde la pestaña Actions
+
+permissions:
+  contents: write   # necesario para que el workflow pueda commitear docs/datos.json
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Consultar CEN + DGA + Open-Meteo y generar docs/datos.json
+        env:
+          CEN_USER_KEY: ${{ secrets.CEN_USER_KEY }}
+        run: python fetch_and_publish.py
+
+      - name: Publicar docs/datos.json
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Actualiza datos de lagos"
+          file_pattern: docs/datos.json
