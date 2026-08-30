@@ -41,6 +41,8 @@ LAKES_METADATA = {
 }
 
 OUTPUT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "datos.json")
+HISTORIAL_RAPEL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "historial_rapel.json")
+HISTORIAL_DIAS = 15  # un poco más de 2 semanas de colchón para el gráfico de la app
 CEN_USER_KEY = os.environ.get("CEN_USER_KEY", "")  # viene del secret de GitHub Actions, sin default
 
 
@@ -164,6 +166,55 @@ def fetch_weather_batch(lakes):
         return {name: (None, None) for name, _, _ in lakes}
 
 
+def actualizar_historial_rapel(cota_rapel, generated_at):
+    """Construye nuestro propio historial de cota de Rapel, corrida a corrida.
+
+    Por qué existe: la API del CEN para traer un RANGO de fechas
+    (/cotas-embalses-reales/v3/findAll) está rota en el servidor de CEN
+    (devuelve "Internal server error" incluso con las fechas de ejemplo de
+    su propia documentación oficial - probado en agosto 2026). Como sí
+    funciona /embalse-real/v3/findLast (el último valor), en vez de pedirle
+    a CEN el historial completo, lo vamos construyendo nosotros: cada
+    corrida de este script (cada 30 min) agrega un punto nuevo al archivo
+    docs/historial_rapel.json, que git-auto-commit-action persiste en el
+    repo. Así el archivo YA trae acumulado el historial de la corrida
+    anterior cuando este script arranca (git checkout lo trae fresco).
+
+    Si algún día CEN arregla /findAll, esto se puede reemplazar por una
+    consulta directa; mientras tanto, este archivo ES la fuente de verdad
+    del historial.
+    """
+    historial = []
+    if os.path.exists(HISTORIAL_RAPEL_FILE):
+        try:
+            with open(HISTORIAL_RAPEL_FILE, "r", encoding="utf-8") as f:
+                historial = json.load(f).get("historial", [])
+        except Exception as e:
+            print(f"[historial] no se pudo leer el archivo previo, se reinicia: {e}")
+            historial = []
+
+    if cota_rapel is not None:
+        historial.append({"fecha": generated_at, "cota": cota_rapel})
+
+    # Poda: se descarta todo lo más viejo que HISTORIAL_DIAS, para que el
+    # archivo no crezca sin límite.
+    corte = datetime.now(timezone.utc).timestamp() - HISTORIAL_DIAS * 86400
+
+    def es_reciente(entry):
+        try:
+            dt = datetime.strptime(entry["fecha"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+            return dt.timestamp() >= corte
+        except (KeyError, ValueError):
+            return False
+
+    historial = [e for e in historial if es_reciente(e)]
+
+    with open(HISTORIAL_RAPEL_FILE, "w", encoding="utf-8") as f:
+        json.dump({"lago": "Rapel", "historial": historial}, f, indent=2, ensure_ascii=False)
+
+    print(f"Escrito {HISTORIAL_RAPEL_FILE} ({len(historial)} puntos)")
+
+
 def main():
     cen_data, cen_err = fetch_all_cen_cotas()
     dga_data, dga_err = fetch_all_dga_cotas()
@@ -189,6 +240,8 @@ def main():
 
     print(f"Escrito {OUTPUT_FILE}")
     print(json.dumps(payload, indent=2, ensure_ascii=False))
+
+    actualizar_historial_rapel(lakes_out.get("Rapel", {}).get("cota"), payload["generated_at"])
 
     # Si AMBAS fuentes fallaron, marca el job como fallido en GitHub Actions
     # (se ve en rojo en el historial de runs) para que sea imposible no notarlo.

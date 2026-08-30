@@ -37,8 +37,8 @@ jobs:
           CEN_USER_KEY: ${{ secrets.CEN_USER_KEY }}
         run: python fetch_and_publish.py
 
-      - name: Publicar docs/datos.json
+      - name: Publicar docs/datos.json y docs/historial_rapel.json
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "Actualiza datos de lagos"
-          file_pattern: docs/datos.json
+          file_pattern: docs/datos.json docs/historial_rapel.json

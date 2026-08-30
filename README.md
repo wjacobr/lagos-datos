@@ -86,6 +86,25 @@ de minutos de Actions, así que no hace falta tocar esto — pero si algún día
 lo pasas a privado, cambia a cada hora (`0 * * * *`) para no acercarte al
 cupo mensual gratis.
 
+## Historial de Rapel (`docs/historial_rapel.json`)
+
+La app ahora muestra un gráfico de las últimas ~2 semanas de cota de Rapel.
+El endpoint oficial del CEN para pedir un RANGO de fechas
+(`/cotas-embalses-reales/v3/findAll`) está roto en su servidor — devuelve
+"Internal server error" incluso con las fechas de ejemplo de su propia
+documentación (probado en agosto 2026) — así que en vez de depender de eso,
+`fetch_and_publish.py` arma su propio historial: cada corrida agrega un
+punto nuevo (fecha + cota de Rapel) a `docs/historial_rapel.json` y descarta
+lo más viejo que 15 días. El workflow ya está configurado para commitear
+también este archivo (ver `file_pattern` en
+`.github/workflows/actualizar-datos.yml`).
+
+Esto significa que el gráfico arranca vacío ("Acumulando historial...") y se
+va llenando solo con el correr de los días — no hace falta ninguna acción
+manual, pero toma unas horas/días en tener una curva completa. Si algún día
+CEN arregla su endpoint de rango, se puede reemplazar esta lógica por una
+consulta directa.
+
 ## Cuando agreguen o quiten un lago
 
 `LAKES_METADATA` en `fetch_and_publish.py` debe tener las mismas llaves
