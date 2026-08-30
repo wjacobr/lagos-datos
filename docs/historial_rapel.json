@@ -1,4 +1,9 @@
 {
   "lago": "Rapel",
-  "historial": []
+  "historial": [
+    {
+      "fecha": "2026-08-30T19:38:32Z",
+      "cota": 103.6
+    }
+  ]
 }
