@@ -27,12 +27,19 @@ import os
 import sys
 import unicodedata
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 LAKES_METADATA = {
     "Rapel": {"source": "CEN", "api_name": "rapel", "lat": -34.17, "lon": -71.49},
     "Vichuquén": {"source": "DGA", "api_name": "lago vichuquen", "lat": -34.88, "lon": -72.03},
     "Colbún": {"source": "CEN", "api_name": "colbun", "lat": -35.68, "lon": -71.36},
-    "Villarrica": {"source": "DGA", "api_name": "lago villarrica en sector la poza", "lat": -39.28, "lon": -72.22},
+    # Villarrica NO tiene cota DGA (nunca la tuvo). En agosto 2026 se encontró
+    # que SHOA sí publica en vivo el sensor de radar de su estación en Pucón
+    # (instalada en 2019 para monitoreo del volcán) a través de un endpoint
+    # no documentado que usa el propio mapa público de SHOA
+    # (shoa.cl/php/nivel-del-mar.php). Ver fetch_villarrica_shoa() más abajo
+    # para el detalle completo y las advertencias sobre unidades/estabilidad.
+    "Villarrica": {"source": "SHOA", "shoa_cod": "VILL", "lat": -39.276404, "lon": -71.981414},
     "Caburgua": {"source": "DGA", "api_name": "lago caburgua", "lat": -39.15, "lon": -71.79},
     "Calafquén": {"source": "DGA", "api_name": "lago calafquen", "lat": -39.52, "lon": -72.15},
     "Panguipulli": {"source": "DGA", "api_name": "lago panguipulli", "lat": -39.73, "lon": -72.33},
@@ -42,8 +49,10 @@ LAKES_METADATA = {
 
 OUTPUT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "datos.json")
 HISTORIAL_RAPEL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "historial_rapel.json")
+HISTORIAL_VILLARRICA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "historial_villarrica.json")
 HISTORIAL_DIAS = 15  # un poco más de 2 semanas de colchón para el gráfico de la app
 CEN_USER_KEY = os.environ.get("CEN_USER_KEY", "")  # viene del secret de GitHub Actions, sin default
+CHILE_TZ = ZoneInfo("America/Santiago")  # los timestamps de SHOA vienen en hora local, sin offset
 
 
 def normalize_name(text: str) -> str:
@@ -166,35 +175,120 @@ def fetch_weather_batch(lakes):
         return {name: (None, None) for name, _, _ in lakes}
 
 
-def actualizar_historial_rapel(cota_rapel, generated_at):
-    """Construye nuestro propio historial de cota de Rapel, corrida a corrida.
+def fetch_villarrica_shoa():
+    """Nivel del lago Villarrica vía la estación SHOA "VILL" (sensor de radar).
+
+    SHOA no ofrece esto como una API pública documentada, pero su propio
+    mapa web de "Nivel del Mar" (shoa.cl/php/nivel-del-mar.php) sí lo
+    consulta en vivo y sin autenticación: revisando el JavaScript de esa
+    página (agosto 2026, archivo mareas/js/mapa.js) se encontró este
+    endpoint. Al ser no documentado, podría cambiar sin aviso -mismo tipo
+    de riesgo que el endpoint roto del CEN, solo que en sentido contrario
+    (por ahora funciona).
+
+    El endpoint solo acepta ventanas cortas: "period=48" (horas) funciona
+    -es lo que usa la propia página de SHOA-, pero "period=168" o superior
+    fue rechazado con el error "Tiempo excede el limite de lectura". Por
+    eso, en vez de pedir todo el historial de una vez, este script trae
+    hasta 48h en cada corrida y actualizar_historial() se encarga de ir
+    acumulando/deduplicando con lo que ya había, igual que con Rapel (pero
+    acá cada corrida trae MUCHOS puntos nuevos de una vez, no solo uno,
+    porque el sensor entrega una lectura por minuto).
+
+    Sobre las unidades: el valor "DATO" es la lectura cruda del sensor de
+    radar en milímetros, referida a la instalación propia de esa estación.
+    NO es una cota oficial sobre el nivel del mar (msnm) como la que usa la
+    DGA/CEN para el resto de los lagos -Villarrica es un lago natural, sin
+    un muro de referencia como el de la hidroeléctrica de Rapel-, así que
+    se usa tal cual viene, en su propia escala (dividido por 1000 para
+    pasar de mm a m). Sirve perfecto para ver si el lago sube o baja y por
+    cuánto, pero el número no es comparable con ningún otro "cota"
+    publicado en otro lado.
+
+    Devuelve (lista_de_(fecha_iso_utc, valor), error).
+    """
+    url = "https://provimar.mitelemetria.cl/apps/src/ws/wsgw.php"
+    params = {
+        "wsname": "getData",
+        "idsensor": ";rad",
+        "idestacion": "VILL",
+        "period": 48,
+        "fmt": "json",
+        "tipo": "tecmar",
+        "orden": "ASC",
+    }
+    try:
+        res = requests.get(url, params=params, timeout=20)
+        if res.status_code != 200:
+            msg = f"SHOA HTTP {res.status_code}"
+            print(f"[SHOA Villarrica] {msg}: {res.text[:300]}")
+            return [], msg
+        data = res.json()
+        if not isinstance(data, list):
+            msg = "Respuesta inesperada de SHOA (endpoint no documentado, puede haber cambiado)"
+            print(f"[SHOA Villarrica] {msg}: {str(data)[:300]}")
+            return [], msg
+        puntos = []
+        for item in data:
+            try:
+                if item.get("SENSOR") != "RAD":
+                    continue
+                dato = item.get("DATO")
+                if dato is None:
+                    continue
+                dt_local = datetime.strptime(item["FECHA"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=CHILE_TZ)
+                dt_utc = dt_local.astimezone(timezone.utc)
+                puntos.append((dt_utc.strftime("%Y-%m-%dT%H:%M:%SZ"), round(float(dato) / 1000, 3)))
+            except (KeyError, TypeError, ValueError):
+                continue
+        return puntos, None
+    except requests.exceptions.RequestException as e:
+        print(f"[SHOA Villarrica] error de red: {e}")
+        return [], "Sin conexión SHOA"
+    except ValueError as e:
+        print(f"[SHOA Villarrica] respuesta no es JSON: {e}")
+        return [], "Respuesta inválida SHOA"
+
+
+def actualizar_historial(lago, archivo, puntos_nuevos):
+    """Construye nuestro propio historial de cota/nivel, corrida a corrida.
+    Función común para Rapel y Villarrica (generalizada en agosto 2026 al
+    agregar Villarrica; antes era "actualizar_historial_rapel", específica).
 
     Por qué existe: la API del CEN para traer un RANGO de fechas
-    (/cotas-embalses-reales/v3/findAll) está rota en el servidor de CEN
-    (devuelve "Internal server error" incluso con las fechas de ejemplo de
-    su propia documentación oficial - probado en agosto 2026). Como sí
-    funciona /embalse-real/v3/findLast (el último valor), en vez de pedirle
-    a CEN el historial completo, lo vamos construyendo nosotros: cada
-    corrida de este script (cada 30 min) agrega un punto nuevo al archivo
-    docs/historial_rapel.json, que git-auto-commit-action persiste en el
-    repo. Así el archivo YA trae acumulado el historial de la corrida
-    anterior cuando este script arranca (git checkout lo trae fresco).
+    (/cotas-embalses-reales/v3/findAll) está rota en su servidor (devuelve
+    "Internal server error" incluso con las fechas de ejemplo de su propia
+    documentación oficial - probado en agosto 2026), y el endpoint de SHOA
+    que usamos para Villarrica solo acepta ventanas cortas (ver
+    fetch_villarrica_shoa). En vez de depender de un historial completo en
+    una sola consulta, lo vamos construyendo nosotros: cada corrida de este
+    script agrega los puntos nuevos al archivo docs/historial_<lago>.json,
+    que git-auto-commit-action persiste en el repo. Así el archivo YA trae
+    acumulado lo de corridas anteriores cuando este script arranca (git
+    checkout lo trae fresco).
 
-    Si algún día CEN arregla /findAll, esto se puede reemplazar por una
-    consulta directa; mientras tanto, este archivo ES la fuente de verdad
-    del historial.
+    puntos_nuevos: lista de tuplas (fecha_iso_utc, valor) a agregar. Puede
+    ser un solo punto (caso Rapel: CEN solo da el último valor) o muchos de
+    una vez (caso Villarrica: SHOA entrega hasta 48h por consulta). Se
+    deduplica por fecha exacta, así que no importa que una corrida traiga
+    puntos que ya estaban.
     """
     historial = []
-    if os.path.exists(HISTORIAL_RAPEL_FILE):
+    if os.path.exists(archivo):
         try:
-            with open(HISTORIAL_RAPEL_FILE, "r", encoding="utf-8") as f:
+            with open(archivo, "r", encoding="utf-8") as f:
                 historial = json.load(f).get("historial", [])
         except Exception as e:
-            print(f"[historial] no se pudo leer el archivo previo, se reinicia: {e}")
+            print(f"[historial] no se pudo leer {archivo}, se reinicia: {e}")
             historial = []
 
-    if cota_rapel is not None:
-        historial.append({"fecha": generated_at, "cota": cota_rapel})
+    fechas_existentes = {e.get("fecha") for e in historial}
+    for fecha, valor in puntos_nuevos:
+        if fecha not in fechas_existentes:
+            historial.append({"fecha": fecha, "cota": valor})
+            fechas_existentes.add(fecha)
+
+    historial.sort(key=lambda e: e.get("fecha", ""))
 
     # Poda: se descarta todo lo más viejo que HISTORIAL_DIAS, para que el
     # archivo no crezca sin límite.
@@ -204,33 +298,42 @@ def actualizar_historial_rapel(cota_rapel, generated_at):
         try:
             dt = datetime.strptime(entry["fecha"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
             return dt.timestamp() >= corte
-        except (KeyError, ValueError):
+        except (KeyError, ValueError, TypeError):
             return False
 
     historial = [e for e in historial if es_reciente(e)]
 
-    with open(HISTORIAL_RAPEL_FILE, "w", encoding="utf-8") as f:
-        json.dump({"lago": "Rapel", "historial": historial}, f, indent=2, ensure_ascii=False)
+    with open(archivo, "w", encoding="utf-8") as f:
+        json.dump({"lago": lago, "historial": historial}, f, indent=2, ensure_ascii=False)
 
-    print(f"Escrito {HISTORIAL_RAPEL_FILE} ({len(historial)} puntos)")
+    print(f"Escrito {archivo} ({len(historial)} puntos)")
 
 
 def main():
     cen_data, cen_err = fetch_all_cen_cotas()
     dga_data, dga_err = fetch_all_dga_cotas()
+    villarrica_puntos, shoa_err = fetch_villarrica_shoa()
     wind_lakes = [(lk, meta["lat"], meta["lon"]) for lk, meta in LAKES_METADATA.items()]
     wind_data = fetch_weather_batch(wind_lakes)
 
     lakes_out = {}
     for lake, meta in LAKES_METADATA.items():
-        source_data = cen_data if meta["source"] == "CEN" else dga_data
-        cota = find_cota(source_data, meta["api_name"])
+        if meta["source"] == "SHOA":
+            # Villarrica no viene de CEN ni DGA: se completa aparte, más
+            # abajo, con el último punto que trajo fetch_villarrica_shoa().
+            cota = None
+        else:
+            source_data = cen_data if meta["source"] == "CEN" else dga_data
+            cota = find_cota(source_data, meta["api_name"])
         spd, dir_deg = wind_data.get(lake, (None, None))
         lakes_out[lake] = {"cota": cota, "wind_speed": spd, "wind_dir": dir_deg}
 
+    if villarrica_puntos:
+        lakes_out["Villarrica"]["cota"] = villarrica_puntos[-1][1]
+
     payload = {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "source_errors": {"cen": cen_err, "dga": dga_err},
+        "source_errors": {"cen": cen_err, "dga": dga_err, "shoa_villarrica": shoa_err},
         "lakes": lakes_out,
     }
 
@@ -241,10 +344,17 @@ def main():
     print(f"Escrito {OUTPUT_FILE}")
     print(json.dumps(payload, indent=2, ensure_ascii=False))
 
-    actualizar_historial_rapel(lakes_out.get("Rapel", {}).get("cota"), payload["generated_at"])
+    cota_rapel = lakes_out.get("Rapel", {}).get("cota")
+    actualizar_historial(
+        "Rapel", HISTORIAL_RAPEL_FILE,
+        [(payload["generated_at"], cota_rapel)] if cota_rapel is not None else []
+    )
+    actualizar_historial("Villarrica", HISTORIAL_VILLARRICA_FILE, villarrica_puntos)
 
     # Si AMBAS fuentes fallaron, marca el job como fallido en GitHub Actions
     # (se ve en rojo en el historial de runs) para que sea imposible no notarlo.
+    # (SHOA/Villarrica queda afuera de esta condición a propósito: es un
+    # extra, no una de las dos fuentes principales del resto de los lagos.)
     if cen_err and dga_err:
         print("ADVERTENCIA: ambas fuentes (CEN y DGA) fallaron en esta corrida.", file=sys.stderr)
         sys.exit(1)

@@ -32,13 +32,13 @@ jobs:
       - name: Instalar dependencias
         run: pip install -r requirements.txt
 
-      - name: Consultar CEN + DGA + Open-Meteo y generar docs/datos.json
+      - name: Consultar CEN + DGA + SHOA + Open-Meteo y generar docs/datos.json
         env:
           CEN_USER_KEY: ${{ secrets.CEN_USER_KEY }}
         run: python fetch_and_publish.py
 
-      - name: Publicar docs/datos.json y docs/historial_rapel.json
+      - name: Publicar docs/datos.json y los historiales (Rapel, Villarrica)
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "Actualiza datos de lagos"
-          file_pattern: docs/datos.json docs/historial_rapel.json
+          file_pattern: docs/datos.json docs/historial_rapel.json docs/historial_villarrica.json

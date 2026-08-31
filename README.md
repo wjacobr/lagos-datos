@@ -105,6 +105,39 @@ manual, pero toma unas horas/días en tener una curva completa. Si algún día
 CEN arregla su endpoint de rango, se puede reemplazar esta lógica por una
 consulta directa.
 
+## Villarrica: fuente SHOA (`docs/historial_villarrica.json`)
+
+Villarrica nunca tuvo cota DGA (fue el motivo original por el que se
+descartó como fuente confiable). En agosto 2026 se encontró que SHOA sí
+publica en vivo el sensor de radar de su estación en Pucón (instalada en
+2019 para monitoreo del volcán) a través de un endpoint no documentado que
+usa el propio mapa público de SHOA (`shoa.cl/php/nivel-del-mar.php` →
+revisando su JavaScript se encontró la consulta real a
+`provimar.mitelemetria.cl`). Ver el docstring de `fetch_villarrica_shoa()`
+en `fetch_and_publish.py` para el detalle completo.
+
+Dos cosas importantes a tener en cuenta:
+
+- **No es una cota oficial en msnm.** El valor es la lectura cruda del
+  sensor de radar, en la escala propia de esa instalación (a diferencia de
+  Rapel, que tiene el muro de la hidroeléctrica como referencia fija,
+  Villarrica es un lago natural sin una referencia de ese tipo). Sirve
+  perfecto para ver si el lago sube o baja y por cuánto, pero el número no
+  se puede comparar con ninguna cota publicada en otro lado. El umbral de
+  alerta de Villarrica en la app se configura en esa misma escala propia.
+- **Es un endpoint no documentado**, encontrado leyendo el JavaScript del
+  sitio de SHOA, no una API pública con contrato formal — podría cambiar
+  sin aviso, igual que le pasó al endpoint de rango del CEN (con la
+  diferencia de que este, por ahora, funciona).
+
+A diferencia de Rapel (que solo agrega un punto por corrida, porque CEN
+únicamente entrega el último valor), el endpoint de SHOA sí entrega un
+rango — hasta 48 horas por consulta (ventanas más largas son rechazadas con
+"Tiempo excede el limite de lectura") — así que cada corrida trae muchos
+puntos nuevos de una vez y `actualizar_historial()` los deduplica por fecha
+contra lo que ya había en `docs/historial_villarrica.json`. En la práctica,
+el historial de Villarrica se llena mucho más rápido que el de Rapel.
+
 ## Cuando agreguen o quiten un lago
 
 `LAKES_METADATA` en `fetch_and_publish.py` debe tener las mismas llaves
