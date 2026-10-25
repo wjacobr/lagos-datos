@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-25T19:53:13Z",
+  "generated_at": "2026-10-25T22:20:28Z",
   "source_errors": {
     "cen": null,
     "dga": null,
@@ -9,47 +9,47 @@
     "Rapel": {
       "cota": 104.7,
       "wind_speed": 14.4,
-      "wind_dir": 206
+      "wind_dir": 240
     },
     "Vichuquén": {
       "cota": null,
-      "wind_speed": 14.0,
-      "wind_dir": 237
+      "wind_speed": 12.5,
+      "wind_dir": 234
     },
     "Colbún": {
       "cota": 436.5,
-      "wind_speed": 12.9,
-      "wind_dir": 220
+      "wind_speed": 9.0,
+      "wind_dir": 227
     },
     "Villarrica": {
-      "cota": 3.993,
-      "wind_speed": 14.2,
-      "wind_dir": 240
+      "cota": 3.992,
+      "wind_speed": 7.4,
+      "wind_dir": 247
     },
     "Caburgua": {
       "cota": 0.0,
-      "wind_speed": 6.2,
-      "wind_dir": 102
+      "wind_speed": 2.1,
+      "wind_dir": 165
     },
     "Calafquén": {
       "cota": 0.0,
-      "wind_speed": 13.7,
-      "wind_dir": 202
+      "wind_speed": 5.7,
+      "wind_dir": 217
     },
     "Panguipulli": {
       "cota": null,
-      "wind_speed": 12.4,
-      "wind_dir": 242
+      "wind_speed": 10.0,
+      "wind_dir": 237
     },
     "Riñihue": {
       "cota": 0.0,
-      "wind_speed": 11.3,
-      "wind_dir": 222
+      "wind_speed": 10.1,
+      "wind_dir": 221
     },
     "Ranco": {
       "cota": 0.0,
-      "wind_speed": 3.7,
-      "wind_dir": 169
+      "wind_speed": 7.9,
+      "wind_dir": 229
     }
   }
 }
