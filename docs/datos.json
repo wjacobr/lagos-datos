@@ -1,55 +1,55 @@
 {
-  "generated_at": "2026-11-04T00:06:33Z",
+  "generated_at": "2026-11-04T06:52:27Z",
   "source_errors": {
     "cen": null,
-    "dga": "Error handling service request : Could not find a service with the name 'DGA/MapServer/ALERTAS' in the configured clusters. Service may be stopped or ArcGIS Server may not be running.",
+    "dga": null,
     "shoa_villarrica": null
   },
   "lakes": {
     "Rapel": {
       "cota": 104.6,
-      "wind_speed": 9.0,
+      "wind_speed": 3.6,
       "wind_dir": 200
     },
     "Vichuquén": {
       "cota": null,
-      "wind_speed": 5.2,
-      "wind_dir": 207
+      "wind_speed": 6.6,
+      "wind_dir": 189
     },
     "Colbún": {
       "cota": 436.6,
-      "wind_speed": 5.1,
-      "wind_dir": 174
+      "wind_speed": 3.9,
+      "wind_dir": 146
     },
     "Villarrica": {
-      "cota": 3.634,
-      "wind_speed": 13.7,
-      "wind_dir": 341
+      "cota": 3.637,
+      "wind_speed": 13.5,
+      "wind_dir": 337
     },
     "Caburgua": {
-      "cota": null,
-      "wind_speed": 4.6,
-      "wind_dir": 342
+      "cota": 0.0,
+      "wind_speed": 4.0,
+      "wind_dir": 324
     },
     "Calafquén": {
-      "cota": null,
-      "wind_speed": 10.3,
-      "wind_dir": 46
+      "cota": 0.0,
+      "wind_speed": 5.8,
+      "wind_dir": 2
     },
     "Panguipulli": {
       "cota": null,
-      "wind_speed": 5.5,
+      "wind_speed": 4.8,
       "wind_dir": 27
     },
     "Riñihue": {
-      "cota": null,
-      "wind_speed": 5.8,
-      "wind_dir": 34
+      "cota": 0.0,
+      "wind_speed": 6.0,
+      "wind_dir": 61
     },
     "Ranco": {
-      "cota": null,
-      "wind_speed": 16.7,
-      "wind_dir": 340
+      "cota": 0.0,
+      "wind_speed": 11.1,
+      "wind_dir": 329
     }
   }
 }
