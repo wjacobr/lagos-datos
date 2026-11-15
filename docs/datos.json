@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-14T20:28:17Z",
+  "generated_at": "2026-11-15T00:08:55Z",
   "source_errors": {
     "cen": null,
     "dga": null,
@@ -22,7 +22,7 @@
       "wind_dir": null
     },
     "Villarrica": {
-      "cota": 3.34,
+      "cota": 3.328,
       "wind_speed": null,
       "wind_dir": null
     },
